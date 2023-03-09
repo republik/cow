@@ -3,11 +3,13 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const geoForIP = require("../lib/geoForIP");
 const hash = require("object-hash");
 
-const DEFAULT_UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 13.1; rv:42.0) Gecko/20100101 Firefox/42.0";
-
-const { PROLITTERIS_MEMBER_ID, PROLITTERIS_DOMAIN, DEV_IP, DEV_UID } =
-  process.env;
+const {
+  PROLITTERIS_MEMBER_ID,
+  PROLITTERIS_DOMAIN,
+  DEFAULT_USER_AGENT,
+  DEV_IP,
+  DEV_UID,
+} = process.env;
 
 export default async function handler(
   request: VercelRequest,
@@ -73,9 +75,9 @@ export default async function handler(
     `https://${PROLITTERIS_DOMAIN}` +
     `/${paid}/vzm.${PROLITTERIS_MEMBER_ID}-${uidParam}` +
     `?c=${cParam}`;
-  
+
   const fetchHeaders = {
-    "User-Agent": DEFAULT_UA,
+    "User-Agent": DEFAULT_USER_AGENT,
     Referer: "republik.ch/" + slug,
     "X-Forwarded-For": ip,
   };
@@ -86,7 +88,6 @@ export default async function handler(
   //     "User-Agent": DEFAULT_UA,
   //     Referer: "original url",
   //     "X-Forwarded-For": "",
-
   //   },
   // });
 
