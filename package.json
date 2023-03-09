@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@vercel/node": "^2.9.12",
+    "geoip-database": "^1.0.97",
+    "maxmind": "^4.3.8",
+    "object-hash": "^3.0.0",
+    "vercel": "^28.16.15"
+  }
+}
