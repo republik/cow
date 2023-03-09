@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-const geoForIP = require("../lib/geoForIP");
 const hash = require("object-hash");
+
+import truncateIP from "../lib/truncateIP";
+const geoForIP = require("../lib/geoForIP");
 
 const {
   PROLITTERIS_MEMBER_ID,
@@ -15,7 +16,7 @@ export default async function handler(
   request: VercelRequest,
   response: VercelResponse
 ) {
-  const ip =
+  const requestIp =
     DEV_IP ||
     request.headers["x-forwarded-for"] ||
     request.connection.remoteAddress;
@@ -23,7 +24,7 @@ export default async function handler(
   const ua = request.headers["user-agent"];
 
   // Remove request from outside of Switzerland
-  const { country }: { country: String } = await geoForIP(ip);
+  const { country } = await geoForIP(requestIp);
   if (country !== "Schweiz") {
     response.status(200).json({
       body: "Request from outside of Switzerland, will not be counted",
@@ -33,7 +34,7 @@ export default async function handler(
 
   // Query Parameters of request
   // 1) paid (string, 'pw' || 'na'): request by paying user (pw) or public (na)
-  // 2) uid (string): unique identifier of the article
+  // 2) uid (string): documentId of the article
   // 3) slug (string): article slug
 
   const { paid, uid, slug } = request.query;
@@ -68,33 +69,38 @@ export default async function handler(
   }
 
   // create unique C-Parameter for each request (20 characters hex) from the ip, user agent
-  const cParam: String = hash([ip, ua]).substring(0, 20);
+  const cParam: String = hash([requestIp, ua]).substring(0, 20);
   const uidParam = DEV_UID || uid;
+  const maskedIP = truncateIP(requestIp)
 
   const fetchUrl =
     `https://${PROLITTERIS_DOMAIN}` +
     `/${paid}/vzm.${PROLITTERIS_MEMBER_ID}-${uidParam}` +
     `?c=${cParam}`;
 
-  const fetchHeaders = {
-    "User-Agent": DEFAULT_USER_AGENT,
+  const requestHeaders = {
+    "User-Agent": DEFAULT_USER_AGENT || "",
     Referer: "republik.ch/" + slug,
-    "X-Forwarded-For": ip,
+    "X-Forwarded-For": maskedIP || "",
   };
 
-  // fetch("https://pl02.owen.prolitteris.ch" + paid + id + cParam, {
-  //   method: "GET",
-  //   headers: {
-  //     "User-Agent": DEFAULT_UA,
-  //     Referer: "original url",
-  //     "X-Forwarded-For": "",
-  //   },
-  // });
-
-  response.status(200).json({
-    body: request.body,
-    query: request.query,
-    fetchHeaders,
-    fetchUrl,
-  });
+  fetch(fetchUrl, {
+    method: "GET",
+    headers: requestHeaders,
+  })
+    .then((res) => {
+      if (!res.ok) {
+        response.status(400).json({ body: `prolitteris error ${res.status}.` });
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.blob();
+    })
+    .then((blob) => {
+      response.status(200).json({
+        body: request.body,
+        query: request.query,
+        requestHeaders,
+        fetchUrl,
+      });
+    });
 }

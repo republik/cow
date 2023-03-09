@@ -2,7 +2,7 @@ const geoipDatabase = require("geoip-database");
 const maxmind = require("maxmind");
 let cityLookup;
 
-module.exports = async (ip) => {
+module.exports = async (ip: string) => {
   if (!cityLookup) {
     cityLookup = await maxmind.open(geoipDatabase.city);
   }
