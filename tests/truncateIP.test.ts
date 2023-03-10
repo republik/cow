@@ -10,7 +10,7 @@ test("trunkates valid ip6", () => {
   );
 });
 
-test("trunkates trunkated ip6", () => {
+test("trunkates already trunkated ip6", () => {
   expect(truncateIP("2a02:168:2112:1:0:0:0:0")).toBe(
     "2a02:168:2112:1:0:0:0:0"
   );

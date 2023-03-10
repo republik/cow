@@ -8,6 +8,7 @@ const {
   PROLITTERIS_MEMBER_ID,
   PROLITTERIS_DOMAIN,
   DEFAULT_USER_AGENT,
+  DOCUMENT_BASE_URL,
   DEV_IP,
   DEV_UID,
 } = process.env;
@@ -45,7 +46,7 @@ export default async function handler(
   // 2) uid (string): documentId of the article
   // 3) slug (string): article slug
 
-  const { paid, uid, slug } = request.query;
+  const { paid, uid, path } = request.query;
 
   // Check that all query parameters are defined.
   if (!paid) {
@@ -69,9 +70,9 @@ export default async function handler(
     return;
   }
 
-  if (!slug) {
+  if (!path) {
     response.status(400).json({
-      body: "slug parameter required.",
+      body: "path parameter required.",
     });
     return;
   }
@@ -87,8 +88,8 @@ export default async function handler(
     `?c=${cParam}`;
 
   const requestHeaders = {
-    "User-Agent": DEFAULT_USER_AGENT || "",
-    Referer: "republik.ch/" + slug,
+    "User-Agent": DEFAULT_USER_AGENT!,
+    Referer: DOCUMENT_BASE_URL! + path,
     "X-Forwarded-For": maskedIP,
   };
 
@@ -97,15 +98,15 @@ export default async function handler(
     headers: requestHeaders,
   }).then((res) => {
     if (!res.ok) {
-      response.status(400).json({ body: `prolitteris error ${res.status}.` });
-      throw new Error(`HTTP error! Status: ${res.status}`);
+      const error = `HTTP error! Status: ${res.status}`
+      response.status(400).json({ body: error});
+      throw new Error(error);
     }
     response.status(200).json({
-      body: request.body,
       query: request.query,
-      requestHeaders,
       fetchUrl,
-      country
+      requestHeaders,
+      requestCountry: country,
     });
     return;
   });
