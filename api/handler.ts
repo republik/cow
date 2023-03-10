@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-const hash = require("object-hash");
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+const hash = require('object-hash')
 
-import truncateIP from "../lib/truncateIP";
-import geoForIP from "../lib/geoForIP";
+import truncateIP from '../lib/truncateIP'
+import geoForIP from '../lib/geoForIP'
 
 const {
   PROLITTERIS_MEMBER_ID,
@@ -11,34 +11,34 @@ const {
   DOCUMENT_BASE_URL,
   DEV_IP,
   DEV_UID,
-} = process.env;
+} = process.env
 
 export default async function handler(
   request: VercelRequest,
-  response: VercelResponse
+  response: VercelResponse,
 ) {
   const requestIps =
     DEV_IP ||
-    request.headers["x-forwarded-for"] ||
-    request.connection.remoteAddress;
+    request.headers['x-forwarded-for'] ||
+    request.connection.remoteAddress
 
-  const ua = request.headers["user-agent"];
+  const ua = request.headers['user-agent']
 
   // throw error if no IP is supplied
   if (!requestIps) {
-    throw new Error("IP undefined");
+    throw new Error('IP undefined')
   }
 
   // if x-forwarded-for contains an array of ip's, use the left most (client)
-  const requestIp = Array.isArray(requestIps) ? requestIps[0] : requestIps;
+  const requestIp = Array.isArray(requestIps) ? requestIps[0] : requestIps
 
   // Remove request from outside of Switzerland
-  const { country } = await geoForIP(requestIp);
-  if (country !== "Schweiz") {
+  const { country } = await geoForIP(requestIp)
+  if (country !== 'Schweiz') {
     response.status(200).json({
-      body: "Request from outside of Switzerland, will not be counted",
-    });
-    return;
+      body: 'Request from outside of Switzerland, will not be counted',
+    })
+    return
   }
 
   // Query Parameters of request
@@ -46,68 +46,68 @@ export default async function handler(
   // 2) uid (string): documentId of the article
   // 3) slug (string): article slug
 
-  const { paid, uid, path } = request.query;
+  const { paid, uid, path } = request.query
 
   // Check that all query parameters are defined.
   if (!paid) {
     response.status(400).json({
-      body: "paid parameter required.",
-    });
-    return;
+      body: 'paid parameter required.',
+    })
+    return
   }
 
-  if (paid !== "na" && paid !== "pw") {
+  if (paid !== 'na' && paid !== 'pw') {
     response.status(400).json({
       body: "Paid parameter must be string 'na' or 'pw'",
-    });
-    return;
+    })
+    return
   }
 
   if (!uid) {
     response.status(400).json({
-      body: "uid parameter required.",
-    });
-    return;
+      body: 'uid parameter required.',
+    })
+    return
   }
 
   if (!path) {
     response.status(400).json({
-      body: "path parameter required.",
-    });
-    return;
+      body: 'path parameter required.',
+    })
+    return
   }
 
   // create unique C-Parameter for each request (20 characters hex) from the ip and user agent
-  const cParam: String = hash([requestIp, ua]).substring(0, 20);
-  const uidParam = DEV_UID || uid;
-  const maskedIP = truncateIP(requestIp);
+  const cParam: String = hash([requestIp, ua]).substring(0, 20)
+  const uidParam = DEV_UID || uid
+  const maskedIP = truncateIP(requestIp)
 
   const fetchUrl =
     `https://${PROLITTERIS_DOMAIN}` +
     `/${paid}/vzm.${PROLITTERIS_MEMBER_ID}-${uidParam}` +
-    `?c=${cParam}`;
+    `?c=${cParam}`
 
   const requestHeaders = {
-    "User-Agent": DEFAULT_USER_AGENT!,
+    'User-Agent': DEFAULT_USER_AGENT!,
     Referer: DOCUMENT_BASE_URL! + path,
-    "X-Forwarded-For": maskedIP,
-  };
+    'X-Forwarded-For': maskedIP,
+  }
 
   fetch(fetchUrl, {
-    method: "GET",
+    method: 'GET',
     headers: requestHeaders,
   }).then((res) => {
     if (!res.ok) {
       const error = `HTTP error! Status: ${res.status}`
-      response.status(400).json({ body: error});
-      throw new Error(error);
+      response.status(400).json({ body: error })
+      throw new Error(error)
     }
     response.status(200).json({
       query: request.query,
       fetchUrl,
       requestHeaders,
       requestCountry: country,
-    });
-    return;
-  });
+    })
+    return
+  })
 }
