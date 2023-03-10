@@ -1,9 +1,18 @@
 {
+  "scripts": {
+    "test": "jest"
+  },
   "dependencies": {
-    "@vercel/node": "^2.9.12",
     "geoip-database": "^1.0.97",
     "maxmind": "^4.3.8",
-    "object-hash": "^3.0.0",
+    "object-hash": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.4.0",
+    "@vercel/node": "^2.9.12",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.0.5",
+    "typescript": "^4.9.5",
     "vercel": "^28.16.15"
   }
 }

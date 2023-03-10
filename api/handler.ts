@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const hash = require("object-hash");
 
 import truncateIP from "../lib/truncateIP";
-const geoForIP = require("../lib/geoForIP");
+import geoForIP from "../lib/geoForIP";
 
 const {
   PROLITTERIS_MEMBER_ID,
@@ -16,12 +16,20 @@ export default async function handler(
   request: VercelRequest,
   response: VercelResponse
 ) {
-  const requestIp =
+  const requestIps =
     DEV_IP ||
     request.headers["x-forwarded-for"] ||
     request.connection.remoteAddress;
 
   const ua = request.headers["user-agent"];
+
+  // throw error if no IP is supplied
+  if (!requestIps) {
+    throw new Error("IP undefined");
+  }
+
+  // if x-forwarded-for contains an array of ip's, use the left most (client)
+  const requestIp = Array.isArray(requestIps) ? requestIps[0] : requestIps;
 
   // Remove request from outside of Switzerland
   const { country } = await geoForIP(requestIp);
@@ -56,7 +64,7 @@ export default async function handler(
 
   if (!uid) {
     response.status(400).json({
-      body: "id parameter required.",
+      body: "uid parameter required.",
     });
     return;
   }
@@ -68,10 +76,10 @@ export default async function handler(
     return;
   }
 
-  // create unique C-Parameter for each request (20 characters hex) from the ip, user agent
+  // create unique C-Parameter for each request (20 characters hex) from the ip and user agent
   const cParam: String = hash([requestIp, ua]).substring(0, 20);
   const uidParam = DEV_UID || uid;
-  const maskedIP = truncateIP(requestIp)
+  const maskedIP = truncateIP(requestIp);
 
   const fetchUrl =
     `https://${PROLITTERIS_DOMAIN}` +
@@ -81,26 +89,24 @@ export default async function handler(
   const requestHeaders = {
     "User-Agent": DEFAULT_USER_AGENT || "",
     Referer: "republik.ch/" + slug,
-    "X-Forwarded-For": maskedIP || "",
+    "X-Forwarded-For": maskedIP,
   };
 
   fetch(fetchUrl, {
     method: "GET",
     headers: requestHeaders,
-  })
-    .then((res) => {
-      if (!res.ok) {
-        response.status(400).json({ body: `prolitteris error ${res.status}.` });
-        throw new Error(`HTTP error! Status: ${res.status}`);
-      }
-      return res.blob();
-    })
-    .then((blob) => {
-      response.status(200).json({
-        body: request.body,
-        query: request.query,
-        requestHeaders,
-        fetchUrl,
-      });
+  }).then((res) => {
+    if (!res.ok) {
+      response.status(400).json({ body: `prolitteris error ${res.status}.` });
+      throw new Error(`HTTP error! Status: ${res.status}`);
+    }
+    response.status(200).json({
+      body: request.body,
+      query: request.query,
+      requestHeaders,
+      fetchUrl,
+      country
     });
+    return;
+  });
 }

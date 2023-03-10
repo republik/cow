@@ -1,8 +1,8 @@
-const geoipDatabase = require("geoip-database");
-const maxmind = require("maxmind");
+import geoipDatabase from "geoip-database";
+import maxmind from "maxmind";
 let cityLookup;
 
-module.exports = async (ip: string) => {
+const geoForIP = async (ip: string) => {
   if (!cityLookup) {
     cityLookup = await maxmind.open(geoipDatabase.city);
   }
@@ -25,3 +25,5 @@ module.exports = async (ip: string) => {
   } catch (e) {}
   return { country, countryEN, city };
 };
+
+export default geoForIP;
